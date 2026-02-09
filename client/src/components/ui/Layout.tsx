@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Eye, History, LogOut, Home, User } from "lucide-react";
+import { Eye, History, LogOut, Home, User, Info } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ export function Layout({ children, showNav = true }: LayoutProps) {
     { href: "/", icon: Home, label: "Dashboard" },
     { href: "/screen", icon: Eye, label: "Screen" },
     { href: "/history", icon: History, label: "History" },
+    { href: "/info", icon: Info, label: "Education" },
   ];
 
   return (

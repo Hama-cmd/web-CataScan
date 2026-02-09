@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import Screening from "@/pages/Screening";
 import Result from "@/pages/Result";
 import History from "@/pages/History";
+import Information from "@/pages/Information";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/screen" component={Screening} />
       <Route path="/result/:id" component={Result} />
       <Route path="/history" component={History} />
+      <Route path="/info" component={Information} />
       <Route component={NotFound} />
     </Switch>
   );

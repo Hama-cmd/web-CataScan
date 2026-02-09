@@ -1,19 +1,19 @@
 import { Link } from "wouter";
-import { Plus, Clock, ChevronRight, Activity } from "lucide-react";
+import { Plus, Clock, ChevronRight, Activity, Info } from "lucide-react";
 import { Layout } from "@/components/ui/Layout";
 import { useAuth } from "@/hooks/use-auth";
 import { useScreenings } from "@/hooks/use-screenings";
 import { format } from "date-fns";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { data: screenings, isLoading } = useScreenings();
 
   const firstName = user?.firstName || "Guest";
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-8 pb-10">
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
@@ -29,6 +29,46 @@ export default function Dashboard() {
               New Screening
             </button>
           </Link>
+        </div>
+
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Link href="/screen">
+            <button className="w-full flex flex-col items-center gap-2 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Plus className="w-6 h-6 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-gray-600">New Scan</span>
+            </button>
+          </Link>
+
+          <Link href="/history">
+            <button className="w-full flex flex-col items-center gap-2 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+              <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
+                <ChevronRight className="w-6 h-6 text-secondary" />
+              </div>
+              <span className="text-xs font-medium text-gray-600">History</span>
+            </button>
+          </Link>
+
+          <Link href="/info">
+            <button className="w-full flex flex-col items-center gap-2 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                <Info className="w-6 h-6 text-blue-500" />
+              </div>
+              <span className="text-xs font-medium text-gray-600">Education</span>
+            </button>
+          </Link>
+
+          <button 
+            onClick={() => logout()}
+            className="w-full flex flex-col items-center gap-2 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+          >
+            <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+              <ChevronRight className="w-6 h-6 text-red-500 rotate-180" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">Logout</span>
+          </button>
         </div>
 
         {/* Stats / Overview Cards */}
