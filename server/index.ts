@@ -80,7 +80,10 @@ export async function setupApp() {
 }
 
 // Only listen if this file is run directly (local dev)
-if (import.meta.url === `file://${process.argv[1]}` || !process.env.VERCEL) {
+const isMainModule = import.meta.url === `file://${process.argv[1]}` ||
+  (typeof require !== 'undefined' && require.main === module);
+
+if (isMainModule || !process.env.VERCEL) {
   (async () => {
     await setupApp();
     const port = parseInt(process.env.PORT || "3000", 10);
