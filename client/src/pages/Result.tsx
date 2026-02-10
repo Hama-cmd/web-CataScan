@@ -1,7 +1,7 @@
 import { useScreening } from "@/hooks/use-screenings";
 import { Link, useRoute } from "wouter";
 import { Layout } from "@/components/ui/Layout";
-import { Loader2, AlertCircle, CheckCircle2, AlertTriangle, ChevronLeft } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, AlertTriangle, ChevronLeft, Eye, Activity } from "lucide-react";
 
 export default function Result() {
   const [, params] = useRoute("/result/:id");
@@ -22,22 +22,26 @@ export default function Result() {
     return (
       <Layout>
         <div className="text-center py-12">
-          <p className="text-red-500">Failed to load result.</p>
-          <Link href="/" className="text-primary hover:underline mt-4 block">Back to Dashboard</Link>
+          <p className="text-red-500">Gagal memuat hasil.</p>
+          <Link href="/" className="text-primary hover:underline mt-4 block">Kembali ke Dashboard</Link>
         </div>
       </Layout>
     );
   }
 
   const result = screening.analysis as any;
-  const isHealthy = result.condition?.toLowerCase().includes("healthy");
+  const isHealthy = result.condition?.toLowerCase().includes("normal") ||
+    result.condition?.toLowerCase().includes("healthy") ||
+    result.condition?.toLowerCase().includes("non_cataract");
+  const confidenceScore = result.confidence_score ?? 0;
+  const confidencePct = Math.round(confidenceScore * 100);
 
   return (
     <Layout>
       <div className="space-y-6 pb-20">
         <Link href="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 transition-colors">
           <ChevronLeft className="w-4 h-4 mr-1" />
-          Back to Dashboard
+          Kembali ke Dashboard
         </Link>
 
         {/* Status Header */}
@@ -49,16 +53,52 @@ export default function Result() {
             {result.condition}
           </h1>
           <p className={`mt-2 font-medium ${isHealthy ? 'text-green-700' : 'text-amber-700'}`}>
-            Confidence: {result.confidence}
+            Tingkat Keyakinan: {result.confidence} ({result.confidence_level})
           </p>
+        </div>
+
+        {/* Confidence Bar */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-5 h-5 text-primary" />
+            <h3 className="font-bold text-gray-900">Detail Probabilitas</h3>
+          </div>
+
+          {/* Cataract Probability */}
+          <div className="mb-4">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Katarak</span>
+              <span className="font-medium text-gray-900">{((result.cataract_probability ?? 0) * 100).toFixed(1)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className="bg-amber-500 h-3 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${(result.cataract_probability ?? 0) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Normal Probability */}
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Normal</span>
+              <span className="font-medium text-gray-900">{((result.non_cataract_probability ?? 0) * 100).toFixed(1)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className="bg-green-500 h-3 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${(result.non_cataract_probability ?? 0) * 100}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Image */}
           <div className="rounded-3xl overflow-hidden shadow-md border border-gray-100">
-            <img 
-              src={screening.imageUrl} 
-              alt="Screening" 
+            <img
+              src={screening.imageUrl}
+              alt="Screening"
               className="w-full h-full object-cover"
             />
           </div>
@@ -66,7 +106,10 @@ export default function Result() {
           {/* Details */}
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-gray-900 mb-3 text-lg">Analysis Description</h3>
+              <h3 className="font-bold text-gray-900 mb-3 text-lg flex items-center gap-2">
+                <Eye className="w-5 h-5 text-primary" />
+                Deskripsi Analisis
+              </h3>
               <p className="text-gray-600 leading-relaxed">
                 {result.description}
               </p>
@@ -75,7 +118,7 @@ export default function Result() {
             <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
               <h3 className="font-bold text-blue-900 mb-3 text-lg flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
-                Recommendation
+                Rekomendasi
               </h3>
               <p className="text-blue-800 leading-relaxed">
                 {result.recommendation}
@@ -87,7 +130,7 @@ export default function Result() {
         {/* Disclaimer */}
         <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 text-center">
           <p>
-            <strong>DISCLAIMER:</strong> This is an AI-powered screening tool and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
+            <strong>DISCLAIMER:</strong> {result.disclaimer || "Ini adalah alat screening berbasis AI dan BUKAN pengganti diagnosis medis profesional. Selalu konsultasikan dengan dokter spesialis mata untuk pemeriksaan dan penanganan yang tepat."}
           </p>
         </div>
       </div>

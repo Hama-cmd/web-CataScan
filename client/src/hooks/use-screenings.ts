@@ -12,7 +12,7 @@ export function useScreenings() {
   return useQuery({
     queryKey: [api.screenings.list.path],
     queryFn: async () => {
-      const res = await fetch(api.screenings.list.path, { credentials: "include" });
+      const res = await fetch(api.screenings.list.path);
       if (!res.ok) throw new Error("Failed to fetch screenings");
       return api.screenings.list.responses[200].parse(await res.json());
     },
@@ -24,7 +24,7 @@ export function useScreening(id: number) {
     queryKey: [api.screenings.get.path, id],
     queryFn: async () => {
       const url = buildUrl(api.screenings.get.path, { id });
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch screening details");
       return api.screenings.get.responses[200].parse(await res.json());
     },
@@ -42,7 +42,6 @@ export function useAnalyzeScreening() {
         method: api.screenings.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-        credentials: "include",
       });
 
       if (!res.ok) {

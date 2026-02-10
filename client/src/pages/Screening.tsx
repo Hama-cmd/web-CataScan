@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import Webcam from "react-webcam";
 import { Layout } from "@/components/ui/Layout";
-import { Camera, Upload, RotateCcw, ArrowRight, Loader2, Image as ImageIcon } from "lucide-react";
+import { Camera, Upload, RotateCcw, ArrowRight, Loader2, Image as ImageIcon, Eye } from "lucide-react";
 import { useAnalyzeScreening } from "@/hooks/use-screenings";
 import { useLocation } from "wouter";
 
@@ -10,7 +10,7 @@ export default function Screening() {
   const [image, setImage] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const analyzeMutation = useAnalyzeScreening();
   const [, setLocation] = useLocation();
 
@@ -44,14 +44,14 @@ export default function Screening() {
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 text-center px-4">
           <div className="relative">
             <div className="w-24 h-24 rounded-full border-4 border-gray-100 flex items-center justify-center">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              <Eye className="w-10 h-10 text-primary animate-pulse" />
             </div>
             <div className="absolute inset-0 rounded-full border-t-4 border-primary animate-spin"></div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Analyzing Image</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Menganalisis Gambar Mata</h2>
             <p className="text-gray-500 mt-2 max-w-xs mx-auto">
-              Our AI is examining the image for potential conditions. This usually takes 5-10 seconds.
+              Model AI sedang memeriksa gambar untuk mendeteksi tanda-tanda katarak. Proses ini biasanya memerlukan 5-15 detik.
             </p>
           </div>
         </div>
@@ -63,8 +63,8 @@ export default function Screening() {
     <Layout>
       <div className="space-y-6">
         <div className="text-center md:text-left">
-          <h1 className="text-2xl font-bold text-gray-900">New Screening</h1>
-          <p className="text-gray-500 text-sm">Capture or upload a clear photo of the eye.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Screening Katarak</h1>
+          <p className="text-gray-500 text-sm">Ambil atau upload foto mata yang jelas untuk screening katarak.</p>
         </div>
 
         {!mode && (
@@ -77,8 +77,8 @@ export default function Screening() {
                 <Camera className="w-8 h-8 text-primary" />
               </div>
               <div className="text-center">
-                <h3 className="font-bold text-gray-900">Use Camera</h3>
-                <p className="text-sm text-gray-500">Take a photo now</p>
+                <h3 className="font-bold text-gray-900">Gunakan Kamera</h3>
+                <p className="text-sm text-gray-500">Ambil foto sekarang</p>
               </div>
             </button>
 
@@ -90,8 +90,8 @@ export default function Screening() {
                 <Upload className="w-8 h-8 text-secondary" />
               </div>
               <div className="text-center">
-                <h3 className="font-bold text-gray-900">Upload Image</h3>
-                <p className="text-sm text-gray-500">Choose from gallery</p>
+                <h3 className="font-bold text-gray-900">Upload Gambar</h3>
+                <p className="text-sm text-gray-500">Pilih dari galeri</p>
               </div>
             </button>
           </div>
@@ -106,7 +106,7 @@ export default function Screening() {
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
                   className="w-full h-full object-cover"
-                  videoConstraints={{ facingMode: "environment" }} // Use back camera on mobile
+                  videoConstraints={{ facingMode: "environment" }}
                 />
                 <button
                   onClick={capture}
@@ -117,14 +117,14 @@ export default function Screening() {
               </>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 p-8 text-center">
-                <div 
+                <div
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full h-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-gray-100 transition-colors"
                 >
                   <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
                     <ImageIcon className="w-8 h-8 text-gray-400" />
                   </div>
-                  <p className="text-gray-500 font-medium">Click to select image</p>
+                  <p className="text-gray-500 font-medium">Klik untuk memilih gambar</p>
                 </div>
                 <input
                   type="file"
@@ -135,8 +135,8 @@ export default function Screening() {
                 />
               </div>
             )}
-            
-            <button 
+
+            <button
               onClick={() => setMode(null)}
               className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full backdrop-blur-sm hover:bg-black/70 transition-colors"
             >
@@ -149,7 +149,7 @@ export default function Screening() {
           <div className="max-w-xl mx-auto space-y-6">
             <div className="relative rounded-3xl overflow-hidden shadow-xl border border-gray-100">
               <img src={image} alt="Preview" className="w-full h-auto" />
-              <button 
+              <button
                 onClick={() => setImage(null)}
                 className="absolute top-4 right-4 p-2 bg-white/90 text-gray-900 rounded-full shadow-lg hover:bg-white transition-colors"
               >
@@ -161,7 +161,8 @@ export default function Screening() {
               onClick={handleSubmit}
               className="w-full py-4 bg-primary text-white text-lg font-bold rounded-2xl shadow-xl shadow-primary/25 hover:bg-primary/90 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
             >
-              Run AI Analysis
+              <Eye className="w-6 h-6" />
+              Analisis Katarak dengan AI
               <ArrowRight className="w-6 h-6" />
             </button>
           </div>

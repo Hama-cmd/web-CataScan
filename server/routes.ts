@@ -1,112 +1,99 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { api } from "@shared/routes";
-import { z } from "zod";
-import OpenAI from "openai";
+import { insertScreeningSchema } from "@shared/schema";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Python model server URL
+const MODEL_SERVER_URL = process.env.PYTHON_MODEL_URL || "http://localhost:5001";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup Authentication
-  await setupAuth(app);
-  registerAuthRoutes(app);
 
-  // Protected Routes
-  app.post(api.screenings.create.path, isAuthenticated, async (req, res) => {
+  // ─── Create Screening (Analyze Image) ────────────────────────────
+  app.post("/api/screenings", async (req, res) => {
     try {
-      const input = api.screenings.create.input.parse(req.body);
-      const userId = (req.user as any).claims.sub;
+      const { image } = req.body;
 
-      // Analyze image with OpenAI
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert ophthalmologist assistant. Analyze the provided eye image for any potential conditions, abnormalities, or signs of disease. 
-            Return the result strictly as a JSON object with the following fields:
-            - condition: string (Name of the potential condition or "Healthy" or "Unclear")
-            - confidence: string (High, Medium, Low)
-            - description: string (Brief explanation of findings)
-            - recommendation: string (Advice on next steps, e.g., "Routine checkup", "See a specialist immediately")
-            - disclaimer: string (Must state this is not a medical diagnosis)
-            
-            If the image is not an eye, set condition to "Invalid Image" and explanation accordingly.`
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Analyze this eye image." },
-              {
-                type: "image_url",
-                image_url: {
-                  url: input.image.startsWith('data:') ? input.image : `data:image/jpeg;base64,${input.image}`,
-                },
-              },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
+      if (!image || typeof image !== "string") {
+        return res.status(400).json({ message: "Missing or invalid 'image' field." });
+      }
+
+      console.log("📸 Received image for analysis, sending to model server...");
+
+      // Call the Python model server
+      const modelResponse = await fetch(`${MODEL_SERVER_URL}/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image }),
       });
 
-      const analysisResult = JSON.parse(response.choices[0].message.content || "{}");
+      if (!modelResponse.ok) {
+        const errorData = await modelResponse.json().catch(() => ({}));
+        console.error("Model server error:", errorData);
+        throw new Error(
+          errorData.error || `Model server returned status ${modelResponse.status}`
+        );
+      }
+
+      const analysisResult = await modelResponse.json();
+      console.log("✅ Analysis result:", analysisResult.condition, analysisResult.confidence);
 
       // Save to database
       const screening = await storage.createScreening({
-        userId,
-        imageUrl: input.image.startsWith('data:') ? input.image : `data:image/jpeg;base64,${input.image}`, // In a real app, upload to S3/Blob storage
+        userId: "local-user", // In a real app with auth, this would be req.user.id
+        imageUrl: image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`,
         analysis: analysisResult,
       });
 
       res.status(201).json(screening);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Screening error:", err);
-      if (err instanceof z.ZodError) {
-        res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+
+      // Check if model server is unreachable
+      if (err.cause?.code === "ECONNREFUSED") {
+        return res.status(503).json({
+          message:
+            "Model server tidak bisa dihubungi. Pastikan Python model server berjalan di port 5001. Jalankan: python model_server.py",
         });
-      } else {
-        res.status(500).json({ message: "Failed to process screening" });
       }
+
+      res.status(500).json({
+        message: err.message || "Failed to process screening",
+      });
     }
   });
 
-  app.get(api.screenings.list.path, isAuthenticated, async (req, res) => {
+  // ─── List Screenings ─────────────────────────────────────────────
+  app.get("/api/screenings", async (_req, res) => {
     try {
-      const userId = (req.user as any).claims.sub;
-      const screenings = await storage.getScreeningsByUser(userId);
+      // Return all screenings for the current user
+      const screenings = await storage.getScreeningsByUser("local-user");
       res.json(screenings);
     } catch (err) {
+      console.error("Error fetching screenings:", err);
       res.status(500).json({ message: "Failed to fetch screenings" });
     }
   });
 
-  app.get(api.screenings.get.path, isAuthenticated, async (req, res) => {
+  // ─── Get Single Screening ────────────────────────────────────────
+  app.get("/api/screenings/:id", async (req, res) => {
     try {
-      const userId = (req.user as any).claims.sub;
-      const screening = await storage.getScreening(Number(req.params.id));
-      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid screening ID" });
+      }
+
+      const screening = await storage.getScreening(id);
+
       if (!screening) {
         return res.status(404).json({ message: "Screening not found" });
       }
 
-      // Security check: ensure user owns the screening
-      if (screening.userId !== userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
       res.json(screening);
     } catch (err) {
+      console.error("Error fetching screening details:", err);
       res.status(500).json({ message: "Failed to fetch screening details" });
     }
   });

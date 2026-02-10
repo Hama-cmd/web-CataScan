@@ -1,8 +1,8 @@
-# OptiScan AI
+# CataScan
 
 ## Overview
 
-OptiScan AI is a web-based eye health screening application that uses AI-powered image analysis to detect potential eye conditions. Users can capture or upload eye images, which are analyzed by OpenAI's vision model (GPT) to provide preliminary screening results including condition identification, confidence level, recommendations, and disclaimers. The app is designed as a mobile-first health tool with a clean, professional medical UI.
+CataScan is a web-based eye health screening application that uses AI-powered image analysis to detect potential eye conditions. Users can capture or upload eye images, which are analyzed by OpenAI's vision model (GPT) to provide preliminary screening results including condition identification, confidence level, recommendations, and disclaimers. The app is designed as a mobile-first health tool with a clean, professional medical UI.
 
 ## User Preferences
 

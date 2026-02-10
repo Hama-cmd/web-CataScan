@@ -18,13 +18,13 @@ export default function History() {
     <Layout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">Screening History</h1>
-          
+          <h1 className="text-2xl font-bold text-gray-900">Riwayat Screening</h1>
+
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input 
+            <input
               type="text"
-              placeholder="Search history..."
+              placeholder="Cari riwayat..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -53,19 +53,19 @@ export default function History() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
-                        <img 
-                          src={screening.imageUrl} 
-                          alt="Eye thumbnail" 
+                        <img
+                          src={screening.imageUrl}
+                          alt="Eye thumbnail"
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
                       </div>
-                      
+
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-bold text-gray-900 text-lg">
                             {(screening.analysis as any).condition || "Analysis Result"}
                           </h3>
-                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${(screening.analysis as any).condition?.toLowerCase().includes('healthy') ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${(screening.analysis as any).condition?.toLowerCase().includes('normal') || (screening.analysis as any).condition?.toLowerCase().includes('healthy') ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                             {(screening.analysis as any).confidence}
                           </span>
                         </div>

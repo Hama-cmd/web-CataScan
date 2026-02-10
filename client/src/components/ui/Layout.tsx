@@ -29,7 +29,7 @@ export function Layout({ children, showNav = true }: LayoutProps) {
             <Eye className="w-6 h-6 text-primary" />
           </div>
           <span className="font-display font-bold text-xl tracking-tight text-gray-900">
-            OptiScan<span className="text-primary">AI</span>
+            CataScan<span className="text-primary"></span>
           </span>
         </Link>
 
@@ -66,11 +66,11 @@ export function Layout({ children, showNav = true }: LayoutProps) {
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href} className={cn(
-                    "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
-                    isActive 
-                      ? "text-primary font-medium" 
-                      : "text-gray-400 hover:text-gray-600"
-                  )}>
+                  "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                  isActive
+                    ? "text-primary font-medium"
+                    : "text-gray-400 hover:text-gray-600"
+                )}>
                   <Icon className={cn("w-6 h-6", isActive && "fill-current/20")} />
                   <span className="text-[10px] uppercase tracking-wider">{item.label}</span>
                 </Link>
