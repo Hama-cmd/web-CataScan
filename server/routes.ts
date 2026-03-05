@@ -27,8 +27,18 @@ export async function registerRoutes(
 
       console.log("📸 Received image for analysis, sending to model server...");
 
+      // Determine model server URL based on environment
+      // In Vercel, the python function is hosted on the same domain under /api/predict
+      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const host = req.headers.host;
+      const isVercel = process.env.VERCEL || process.env.NODE_ENV === "production";
+
+      const targetUrl = isVercel
+        ? `${protocol}://${host}/api/predict`
+        : "http://127.0.0.1:5001/predict";
+
       // Call the Python model server
-      const modelResponse = await fetch(`${MODEL_SERVER_URL}/predict`, {
+      const modelResponse = await fetch(targetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image }),
