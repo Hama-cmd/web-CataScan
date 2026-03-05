@@ -80,7 +80,8 @@ export async function setupApp() {
 }
 
 // Only listen if this file is run directly (local dev)
-const isMainModule = import.meta.url === `file://${process.argv[1]}` ||
+const isMainModule =
+  (typeof import.meta !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) ||
   (typeof require !== 'undefined' && require.main === module);
 
 if (isMainModule || !process.env.VERCEL) {
