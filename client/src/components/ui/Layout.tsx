@@ -36,38 +36,15 @@ export function Layout({ children, showNav = true }: LayoutProps) {
           </span>
         </Link>
 
-        {user ? (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-              title="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            <div className="hidden md:flex flex-col items-end mr-2">
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                {user.firstName || "User"}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Member</span>
-            </div>
-            <button
-              onClick={() => logout()}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-destructive dark:hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/10 rounded-full transition-all"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        ) : (
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors"
+            className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
             title="Toggle theme"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-        )}
+        </div>
       </header>
 
       {/* Main Content */}
@@ -76,7 +53,7 @@ export function Layout({ children, showNav = true }: LayoutProps) {
       </main>
 
       {/* Bottom Nav for Mobile */}
-      {showNav && user && (
+      {showNav && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-card border-t border-gray-200 dark:border-border px-6 py-3 pb-safe z-50 transition-colors duration-300">
           <div className="flex justify-between items-center max-w-sm mx-auto">
             {navItems.map((item) => {

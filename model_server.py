@@ -1,6 +1,7 @@
 """
 Cataract Screening Model Server
-Flask API that serves the MobileNetV2-based cataract detection model.
+Flask API that serves the TFLite-based cataract detection model.
+Works with Python 3.13+ (no full TensorFlow dependency).
 """
 
 import os
@@ -11,9 +12,19 @@ import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-# Suppress TensorFlow warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-import tensorflow as tf
+
+# Try TFLite interpreters (compatible with Python 3.13)
+try:
+    import ai_edge_litert.interpreter as tflite
+except ImportError:
+    try:
+        import tflite_runtime.interpreter as tflite
+    except ImportError:
+        raise ImportError(
+            "No TFLite runtime found. Install one of:\n"
+            "  pip install ai-edge-litert\n"
+            "  pip install tflite-runtime"
+        )
 
 app = Flask(__name__)
 CORS(app)
@@ -23,36 +34,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ─── Model Configuration ─────────────────────────────────────────────
-MODEL_PATH = "best_model_mobilenetv2_katarak.h5"  # Relative path for simplicity
-IMG_SIZE = (224, 224)  # MobileNetV2 input size
-CLASS_NAMES = ["cataract", "non_cataract"]
-
-# ─── Custom Layer Workaround ─────────────────────────────────────────
-# Fix for "Unrecognized keyword arguments passed to DepthwiseConv2D: {'groups': 1}"
-# This happens when loading newer/older Keras models
-class CustomDepthwiseConv2D(tf.keras.layers.DepthwiseConv2D):
-    def __init__(self, **kwargs):
-        if 'groups' in kwargs:
-            del kwargs['groups']
-        super().__init__(**kwargs)
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.tflite")
+IMG_SIZE = (224, 224)
 
 # ─── Load Model ──────────────────────────────────────────────────────
-logger.info(f"Loading model from: {MODEL_PATH}")
-try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
+interpreter = None
 
-    model = tf.keras.models.load_model(
-        MODEL_PATH, 
-        custom_objects={'DepthwiseConv2D': CustomDepthwiseConv2D}
-    )
-    logger.info("✅ Model loaded successfully!")
-    logger.info(f"   Input shape: {model.input_shape}")
-    logger.info(f"   Output shape: {model.output_shape}")
-except Exception as e:
-    logger.error(f"❌ Failed to load model: {e}")
-    # Attempt to load without custom objects if that failed, or just fail
-    model = None
+def get_interpreter():
+    global interpreter
+    if interpreter is None:
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
+        logger.info(f"Loading TFLite model from: {MODEL_PATH}")
+        interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+        logger.info(f"✅ Model loaded! Input shape: {input_details[0]['shape']}, Output shape: {output_details[0]['shape']}")
+    return interpreter
 
 
 def preprocess_image(image_data: str) -> np.ndarray:
@@ -92,7 +91,6 @@ def build_result(prediction: np.ndarray) -> dict:
     
     if len(prediction) == 1:
         # Sigmoid output: single value 0-1
-        # Assume: close to 1 = cataract, close to 0 = non_cataract
         cataract_prob = float(prediction[0])
         non_cataract_prob = 1.0 - cataract_prob
     else:
@@ -103,57 +101,36 @@ def build_result(prediction: np.ndarray) -> dict:
     confidence_score = cataract_prob
     confidence_pct = f"{confidence_score * 100:.1f}%"
     
-    # Determine Severity and Recommendations
-    if confidence_score < 0.30:
+    # Determine Confidence and Basic Recommendations
+    if confidence_score < 0.50:
         condition = "Normal (No Cataract)"
         severity = "Normal"
         description = (
             "Mata Anda terlihat sehat dan normal. Tidak terdeteksi adanya tanda-tanda katarak "
-            "yang signifikan berdasarkan analisis AI."
+            "berdasarkan analisis AI."
         )
         recommendation = (
-            "Pertahankan kesehatan mata Anda dengan pola makan sehat, gunakan kacamata anti-UV "
-            "saat beraktivitas di luar ruangan, dan lakukan pemeriksaan rutin tahunan."
-        )
-    elif confidence_score < 0.60:
-        condition = "Suspect / Early Signs"
-        severity = "Mild (Ringan)"
-        description = (
-            "Terdeteksi tanda-tanda awal atau kekeruhan ringan pada lensa mata. "
-            "Ini mungkin merupakan tahap awal katarak atau gangguan ringan lainnya."
-        )
-        recommendation = (
-            "Disarankan untuk mulai memantau penglihatan Anda. Lindungi mata dari sinar matahari langsung "
-            "dan kurangi faktor risiko seperti merokok. Jadwalkan pemeriksaan dengan dokter mata untuk baseline."
-        )
-    elif confidence_score < 0.85:
-        condition = "Cataract Detected"
-        severity = "Moderate (Sedang)"
-        description = (
-            "Analisis menunjukkan indikasi katarak tingkat sedang. Kekeruhan pada lensa "
-            "mungkin mulai mengganggu penglihatan Anda (buram, silau)."
-        )
-        recommendation = (
-            "Sebaiknya konsul asikan dengan dokter spesialis mata dalam waktu dekat. "
-            "Dokter akan mengevaluasi apakah kondisi ini memerlukan tindakan medis atau pemantauan lebih ketat."
+            "Jaga kesehatan mata dengan pola makan sehat, gunakan kacamata anti-UV "
+            "saat di luar ruangan, dan lakukan pemeriksaan rutin tahunan."
         )
     else:
         condition = "Cataract Detected"
-        severity = "Severe (Berat)"
+        severity = "Cataract"
         description = (
-            "Terdeteksi indikasi katarak tingkat lanjut dengan probabilitas tinggi. "
-            "Kemungkinan besar penglihatan Anda sudah terganggu secara signifikan."
+            "Terdeteksi indikasi katarak pada mata Anda. Kekeruhan pada lensa "
+            "mungkin mulai atau sudah mengganggu penglihatan."
         )
         recommendation = (
-            "Sangat disarankan untuk SEGERA menemui dokter spesialis mata (Oftalmologis). "
-            "Kondisi ini mungkin memerlukan intervensi bedah katarak untuk mengembalikan penglihatan yang jernih."
+            "Sangat disarankan untuk berkonsultasi dengan dokter spesialis mata (Oftalmologis). "
+            "Dokter akan mengevaluasi kondisi Anda dan menentukan penanganan yang tepat, "
+            "termasuk kemungkinan tindakan operasi."
         )
 
     # UI expects 'condition' to determine color/icon.
     if confidence_score > 0.5:
-        final_condition = "Cataract Detected" # Keeps UI red/warning
+        final_condition = "Cataract Detected"
     else:
-        final_condition = "Normal (No Cataract)" # Keeps UI green/safe
+        final_condition = "Normal (No Cataract)"
 
     return {
         "condition": final_condition,
@@ -175,17 +152,24 @@ def build_result(prediction: np.ndarray) -> dict:
 
 @app.route("/health", methods=["GET"])
 def health_check():
+    try:
+        get_interpreter()
+        status = "healthy"
+    except Exception:
+        status = "unhealthy"
     return jsonify({
-        "status": "healthy" if model is not None else "unhealthy",
-        "model": "MobileNetV2",
+        "status": status,
+        "model": "MobileNetV2 (TFLite)",
         "version": "v2.0"
     })
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if model is None:
-        return jsonify({"error": "Model not loaded. Check server logs."}), 503
+    try:
+        interp = get_interpreter()
+    except Exception as e:
+        return jsonify({"error": f"Model not loaded: {str(e)}"}), 503
     
     data = request.get_json()
     if not data or "image" not in data:
@@ -193,7 +177,14 @@ def predict():
     
     try:
         img_array = preprocess_image(data["image"])
-        prediction = model.predict(img_array, verbose=0)
+        
+        input_details = interp.get_input_details()
+        output_details = interp.get_output_details()
+        
+        interp.set_tensor(input_details[0]['index'], img_array)
+        interp.invoke()
+        prediction = interp.get_tensor(output_details[0]['index'])
+        
         result = build_result(prediction)
         logger.info(f"Prediction: {result['condition']} - Score: {result['confidence']}")
         return jsonify(result)
@@ -203,5 +194,5 @@ def predict():
 
 if __name__ == "__main__":
     port = int(os.environ.get("MODEL_PORT", 5001))
-    logger.info(f"Starting MobileNetV2 Server on port {port}")
+    logger.info(f"Starting TFLite Model Server on port {port}")
     app.run(host="0.0.0.0", port=port)

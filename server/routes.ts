@@ -4,12 +4,17 @@ import { storage } from "./storage";
 import { insertScreeningSchema } from "@shared/schema";
 
 // Python model server URL
-const MODEL_SERVER_URL = process.env.PYTHON_MODEL_URL || "http://localhost:5001";
+const MODEL_SERVER_URL = process.env.PYTHON_MODEL_URL || "http://127.0.0.1:5001";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // ─── Auth stub (no auth system active) ───────────────────────────
+  app.get("/api/auth/user", (_req, res) => {
+    res.status(401).json({ message: "Not authenticated" });
+  });
 
   // ─── Create Screening (Analyze Image) ────────────────────────────
   app.post("/api/screenings", async (req, res) => {
@@ -41,11 +46,25 @@ export async function registerRoutes(
       console.log("✅ Analysis result:", analysisResult.condition, analysisResult.confidence);
 
       // Save to database
-      const screening = await storage.createScreening({
-        userId: "local-user", // In a real app with auth, this would be req.user.id
-        imageUrl: image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`,
-        analysis: analysisResult,
-      });
+      // Try to save to database, but don't fail if DB is unavailable
+      let screening;
+      try {
+        screening = await storage.createScreening({
+          userId: "local-user",
+          imageUrl: image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`,
+          analysis: analysisResult,
+        });
+      } catch (dbErr: any) {
+        console.warn("⚠️ Database unavailable, returning result without saving:", dbErr.message);
+        // Return mock screening object so frontend still works
+        screening = {
+          id: Date.now(),
+          userId: "local-user",
+          imageUrl: image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`,
+          analysis: analysisResult,
+          createdAt: new Date(),
+        };
+      }
 
       res.status(201).json(screening);
     } catch (err: any) {

@@ -8,14 +8,39 @@ export interface IStorage {
   getScreening(id: number): Promise<Screening | undefined>;
 }
 
+// In-memory fallback when database is unavailable
+class MemoryStorage implements IStorage {
+  private screenings: Screening[] = [];
+
+  async createScreening(screening: InsertScreening): Promise<Screening> {
+    const newScreening: Screening = {
+      id: Date.now(),
+      userId: screening.userId,
+      imageUrl: screening.imageUrl,
+      analysis: screening.analysis,
+      createdAt: new Date(),
+    };
+    this.screenings.unshift(newScreening);
+    return newScreening;
+  }
+
+  async getScreeningsByUser(userId: string): Promise<Screening[]> {
+    return this.screenings.filter(s => s.userId === userId);
+  }
+
+  async getScreening(id: number): Promise<Screening | undefined> {
+    return this.screenings.find(s => s.id === id);
+  }
+}
+
 export class DatabaseStorage implements IStorage {
   async createScreening(screening: InsertScreening): Promise<Screening> {
-    const [result] = await db.insert(screenings).values(screening).returning();
+    const [result] = await db!.insert(screenings).values(screening).returning();
     return result;
   }
 
   async getScreeningsByUser(userId: string): Promise<Screening[]> {
-    return db
+    return db!
       .select()
       .from(screenings)
       .where(eq(screenings.userId, userId))
@@ -23,7 +48,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getScreening(id: number): Promise<Screening | undefined> {
-    const [result] = await db
+    const [result] = await db!
       .select()
       .from(screenings)
       .where(eq(screenings.id, id));
@@ -31,4 +56,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Use database if available, otherwise use in-memory storage
+export const storage: IStorage = db ? new DatabaseStorage() : new MemoryStorage();
