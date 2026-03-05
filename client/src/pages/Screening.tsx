@@ -14,16 +14,55 @@ export default function Screening() {
   const analyzeMutation = useAnalyzeScreening();
   const [, setLocation] = useLocation();
 
-  const capture = useCallback(() => {
+  const resizeImage = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        // Target dimension roughly 800px max (good enough for AI model which downsizes to 224x224 anyway)
+        const MAX_DIM = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        // Compress as JPEG at 80% quality to ensure very small payload (< 1MB)
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = dataUrl;
+    });
+  };
+
+  const capture = useCallback(async () => {
     const imageSrc = webcamRef.current?.getScreenshot();
-    if (imageSrc) setImage(imageSrc);
+    if (imageSrc) {
+      const resized = await resizeImage(imageSrc);
+      setImage(resized);
+    }
   }, [webcamRef]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setImage(reader.result as string);
+      reader.onloadend = async () => {
+        const resized = await resizeImage(reader.result as string);
+        setImage(resized);
+      };
       reader.readAsDataURL(file);
     }
   };
